@@ -2,6 +2,9 @@
 
 This project demonstrates how to implement a **Continuous Integration (CI)** pipeline on the AWS platform using managed AWS services. It covers setting up a pipeline that pulls code from a GitHub repository, builds a Docker image using AWS CodeBuild, and stores sensitive information securely using AWS Systems Manager. 
 
+
+In the regular implementation of CI, when a user commits any changes to the github repository,we configure a webhook which triggers jenkins which is where declarative pipelines are written using groovy scripts. Jenkins acts as an orchestartor, it is mainly responsible for 2 actions - **for the implementation of CI and invoking the CD**. Similar to this approach AWS has dedicated services which are used for the same purpose. In the way how webhook in github is used to trigger the jenkins, In AWS, code commit is used to trigger code pipeline, the Code pipeline is responsible for **invoking both CI and CD.**. In general approach jenkins perform CI and invokes CD, where as in AWS, Code pipeline just invokes both the CI and CD and CI is performed with the service called **Codebuild** and with **Codedeploy** CD is handled and deploy it to either K8S or ECS or EC2.
+
 ---
 
 ## Prerequisites
@@ -16,11 +19,17 @@ This project demonstrates how to implement a **Continuous Integration (CI)** pip
 
 ## Architecture Overview
 
+The below displayed image is the complete architecture of the project. In this project the main focus is on Continuous Integration.
+
+![AWS CI Architecture](https://github.com/harinath-az/DevOps_projects/blob/main/VPC/images/aws_vpc_arch.png)
+
 This architecture involves:
 - **GitHub** as the source code repository.
 - **AWS CodePipeline** for orchestrating the pipeline.
 - **AWS CodeBuild** to build and test the application, along with Docker image creation.
 - **AWS Systems Manager Parameter Store** for securely managing sensitive data (e.g., Docker Hub credentials).
+
+The project can be implemented in any order, We need a place where users commits the changes to, we have a dedicated AWS versioned service called Codecomit, but due to less industry standard features and most of the people prefering Github over Codecommit, So AWS tookout the service for new users. So we will be using Github for this project.
   
 ---
 
@@ -28,7 +37,7 @@ This architecture involves:
 
 ### Step 1: Set up GitHub Repository
 
-The first step in our CI journey is to set up a GitHub repository to store our Python application's source code. If you already have a repository, feel free to skip this step. Otherwise, let's create a new repository on GitHub by following these steps:
+The first step in our CI journey is to set up a GitHub repository to store our Python application's source code. 
 
 - Go to github.com and sign in to your account.
 - Click on the "+" button in the top-right corner and select "New repository."
@@ -44,6 +53,11 @@ The first step in our CI journey is to set up a GitHub repository to store our P
    - Click on **Create Build Project**.
    - Name the project (e.g., `sample-python-flask-app`).
    - In the **Environment** section, select **Ubuntu** and choose the latest **runtime image**.
+  
+![Codebuild-Github](https://github.com/harinath-az/DevOps_projects/blob/main/VPC/images/aws_vpc_arch.png)
+
+Next create a Servicerole or use an existing role (In order for codebuild to perform certain actions (When services needs to perform some actions on other services we need to assign certain roles))
+![service image](https://github.com/harinath-az/DevOps_projects/blob/main/VPC/images/aws_vpc_arch.png)
 
 2. **Configure BuildSpec**:
    Write the `buildspec.yml` that defines the build steps, including building the Docker image:
@@ -67,6 +81,9 @@ The first step in our CI journey is to set up a GitHub repository to store our P
      DOCKER_REGISTRY_URL: "https://index.docker.io/v1/"
    ```
 
+All the steps like checkout, build , UT, code scan in order for them to execute, we need to write the code for image creation, scanning. All these are written in the buildspec file. And since this file might be accessed by others we need to mask cerain information, so that important information like username, passwords wont be displayed to others. For this we use AWS System manager.
+
+![AWS CI Architecture](https://github.com/harinath-az/DevOps_projects/blob/main/VPC/images/aws_vpc_arch.png)
 ---
 
 ### Step 3: Secure Sensitive Data using AWS Systems Manager
